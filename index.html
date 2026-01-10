@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber-Deck 1984 | Music Player</title>
+    <link rel="stylesheet" href="style.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body>
+    <div class="crt-overlay"></div>
+    <div class="scanlines"></div>
+
+    <main class="cyber-deck">
+        <div class="deck-header">
+            <img src="logo.png" alt="Logo" class="deck-logo">
+            <div class="model-number">SERIES-1984 [MOD V2]</div>
+        </div>
+        <!-- Dashboard / Monitor -->
+        <section class="monitor-bay">
+            <div class="monitor-screen">
+                <canvas id="visualizer"></canvas>
+                <div class="track-info">
+                    <h1 id="track-name">READY_FOR_INPUT</h1>
+                    <p id="artist-name">CYBER-DECK_OS v1.0.84</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tape Deck Section -->
+        <section class="tape-bay">
+            <div class="cassette">
+                <div class="cassette-body">
+                    <div class="reel reel-left"></div>
+                    <div class="reel reel-right"></div>
+                    <div class="tape-window">
+                        <div class="tape-label">TDK-D90</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Controls -->
+        <section class="control-bay">
+            <div class="control-panel">
+                <div class="slider-group">
+                    <label>VOLUME</label>
+                    <input type="range" id="volume" min="0" max="1" step="0.01" value="0.7">
+                </div>
+                <div class="button-group">
+                    <button id="prev" class="cyber-button">◀◀</button>
+                    <button id="play-pause" class="cyber-button play">▶</button>
+                    <button id="next" class="cyber-button">▶▶</button>
+                    <input type="file" id="file-input" accept="audio/*" style="display: none;">
+                    <button id="load-tape" class="cyber-button secondary">LOAD TAPE</button>
+                </div>
+                <div class="slider-group">
+                    <label>LO-FI NOISE</label>
+                    <input type="range" id="lofi" min="0" max="1" step="0.01" value="0">
+                </div>
+            </div>
+
+            <div class="status-bar">
+                <span class="status-led id=" power-led"></span>
+                <span class="status-text">SYSTEM OK // LINK ESTABLISHED</span>
+            </div>
+        </section>
+    </main>
+
+    <audio id="audio-player"></audio>
+    <script src="main.js"></script>
+</body>
+
+</html>
