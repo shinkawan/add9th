@@ -26,9 +26,6 @@ class CyberDeckPlayer {
         this.isSeeking = false;
         this.pressThreshold = 300; // ms
 
-        // iOS background audio workaround components
-        this.iosSilentAudio = null;
-        this.iosStreamDest = null;
 
         // DB setup
         this.dbName = "CyberDeckDB";
@@ -118,27 +115,10 @@ class CyberDeckPlayer {
         window.addEventListener('resize', () => this.resizeCanvas());
         this.resizeCanvas();
 
-        // AudioContext state monitoring for resume (iOS safety)
-        document.addEventListener('visibilitychange', () => {
-            if (!document.hidden && this.audioContext && this.audioContext.state === 'interrupted') {
-                this.audioContext.resume();
-            }
-        });
 
         this.setupMediaSession();
         this.loadTrack(0);
 
-        // Global interaction listener for iOS safety
-        const pokeAudio = () => {
-            if (this.audioContext && this.audioContext.state === 'suspended') {
-                this.audioContext.resume();
-            }
-            if (this.isIOS() && this.iosSilentAudio && this.isPlaying && this.iosSilentAudio.paused) {
-                this.iosSilentAudio.play().catch(() => { });
-            }
-        };
-        document.addEventListener('click', pokeAudio);
-        document.addEventListener('touchstart', pokeAudio);
 
         // PWA Setup
         this.registerServiceWorker();
@@ -302,10 +282,6 @@ class CyberDeckPlayer {
         this.analyser.connect(this.masterGain);
         this.masterGain.connect(this.audioContext.destination);
 
-        // iOS Background Audio Hack: Route through MediaStream to a sacrificial audio element
-        if (this.isIOS()) {
-            this.setupIOSBackgroundAudio();
-        }
 
         this.noiseSource.start();
         this.setupLofiListener();
@@ -477,14 +453,8 @@ class CyberDeckPlayer {
 
         if (this.audioElement.paused) {
             this.audioElement.play().catch(e => console.error("Playback failed:", e));
-            if (this.isIOS() && this.iosSilentAudio) {
-                this.iosSilentAudio.play().catch(e => console.error("iOS Silent Audio failed:", e));
-            }
         } else {
             this.audioElement.pause();
-            if (this.isIOS() && this.iosSilentAudio) {
-                this.iosSilentAudio.pause();
-            }
         }
     }
 
@@ -570,32 +540,6 @@ class CyberDeckPlayer {
         }
     }
 
-    // iOS Specific Background Audio Workaround
-    setupIOSBackgroundAudio() {
-        try {
-            this.iosStreamDest = this.audioContext.createMediaStreamDestination();
-            this.masterGain.connect(this.iosStreamDest);
-
-            // Create hidden audio element to "consume" the stream and keep AC alive
-            this.iosSilentAudio = document.createElement('audio');
-            this.iosSilentAudio.style.display = 'none';
-            document.body.appendChild(this.iosSilentAudio);
-
-            this.iosSilentAudio.srcObject = this.iosStreamDest.stream;
-
-            console.log("iOS BACKGROUND AUDIO PAYLOAD ARMED");
-        } catch (e) {
-            console.error("iOS Audio Hack Failed:", e);
-        }
-    }
-
-    isIOS() {
-        return [
-            'iPad Simulator', 'iPhone Simulator', 'iPod Simulator',
-            'iPad', 'iPhone', 'iPod'
-        ].includes(navigator.platform)
-            || (navigator.userAgent.includes("Mac") && "ontouchend" in document);
-    }
 }
 
 // Initial boot sequence
