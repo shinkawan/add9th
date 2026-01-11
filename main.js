@@ -25,6 +25,7 @@ class CyberDeckPlayer {
         this.seekInterval = null;
         this.isSeeking = false;
         this.pressThreshold = 300; // ms
+        this.wakeLock = null;
 
 
         // DB setup
@@ -78,6 +79,7 @@ class CyberDeckPlayer {
             this.playPauseBtn.textContent = '||';
             document.querySelector('.cassette-body').classList.add('playing');
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
+            this.requestWakeLock();
         });
 
         this.audioElement.addEventListener('pause', () => {
@@ -85,10 +87,12 @@ class CyberDeckPlayer {
             this.playPauseBtn.textContent = '▶';
             document.querySelector('.cassette-body').classList.remove('playing');
             if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
+            this.releaseWakeLock();
         });
 
         this.audioElement.addEventListener('ended', () => {
             this.nextTrack(true);
+            this.releaseWakeLock();
         });
 
         // File loading logic
@@ -114,6 +118,13 @@ class CyberDeckPlayer {
         // Handle window resize for visualizer
         window.addEventListener('resize', () => this.resizeCanvas());
         this.resizeCanvas();
+
+        // Handle visibility change to re-acquire wake lock
+        document.addEventListener('visibilitychange', async () => {
+            if (this.wakeLock !== null && document.visibilityState === 'visible' && this.isPlaying) {
+                await this.requestWakeLock();
+            }
+        });
 
 
         this.setupMediaSession();
@@ -537,6 +548,27 @@ class CyberDeckPlayer {
                     .then(reg => console.log('SW REGISTERED', reg.scope))
                     .catch(err => console.log('SW REGISTRATION FAILED', err));
             });
+        }
+    }
+
+    async requestWakeLock() {
+        if ('wakeLock' in navigator) {
+            try {
+                this.wakeLock = await navigator.wakeLock.request('screen');
+                this.wakeLock.addEventListener('release', () => {
+                    console.log('WAKE LOCK RELEASED');
+                });
+                console.log('WAKE LOCK ACQUIRED');
+            } catch (err) {
+                console.error(`${err.name}, ${err.message}`);
+            }
+        }
+    }
+
+    async releaseWakeLock() {
+        if (this.wakeLock) {
+            await this.wakeLock.release();
+            this.wakeLock = null;
         }
     }
 
