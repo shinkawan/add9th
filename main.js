@@ -128,6 +128,18 @@ class CyberDeckPlayer {
         this.setupMediaSession();
         this.loadTrack(0);
 
+        // Global interaction listener for iOS safety
+        const pokeAudio = () => {
+            if (this.audioContext && this.audioContext.state === 'suspended') {
+                this.audioContext.resume();
+            }
+            if (this.isIOS() && this.iosSilentAudio && this.isPlaying && this.iosSilentAudio.paused) {
+                this.iosSilentAudio.play().catch(() => { });
+            }
+        };
+        document.addEventListener('click', pokeAudio);
+        document.addEventListener('touchstart', pokeAudio);
+
         // PWA Setup
         this.registerServiceWorker();
     }
@@ -465,8 +477,14 @@ class CyberDeckPlayer {
 
         if (this.audioElement.paused) {
             this.audioElement.play().catch(e => console.error("Playback failed:", e));
+            if (this.isIOS() && this.iosSilentAudio) {
+                this.iosSilentAudio.play().catch(e => console.error("iOS Silent Audio failed:", e));
+            }
         } else {
             this.audioElement.pause();
+            if (this.isIOS() && this.iosSilentAudio) {
+                this.iosSilentAudio.pause();
+            }
         }
     }
 
@@ -564,10 +582,6 @@ class CyberDeckPlayer {
             document.body.appendChild(this.iosSilentAudio);
 
             this.iosSilentAudio.srcObject = this.iosStreamDest.stream;
-
-            // Sync with main playback
-            this.audioElement.addEventListener('play', () => this.iosSilentAudio.play());
-            this.audioElement.addEventListener('pause', () => this.iosSilentAudio.pause());
 
             console.log("iOS BACKGROUND AUDIO PAYLOAD ARMED");
         } catch (e) {
