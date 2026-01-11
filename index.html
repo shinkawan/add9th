@@ -6,6 +6,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cyber-Deck 1984 | Music Player</title>
     <link rel="stylesheet" href="style.css">
+    <link rel="icon" type="image/png" href="logo.png">
+    <link rel="apple-touch-icon" href="logo.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0a0a0f">
     <link
         href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap"
         rel="stylesheet">
@@ -17,7 +21,9 @@
 
     <main class="cyber-deck">
         <div class="deck-header">
-            <img src="logo.png" alt="Logo" class="deck-logo">
+            <a href="https://add9th.from.tv/" target="_blank" rel="noopener noreferrer">
+                <img src="logo.png" alt="Logo" class="deck-logo">
+            </a>
             <div class="model-number">SERIES-1984 [MOD V2]</div>
         </div>
         <!-- Dashboard / Monitor -->
@@ -57,6 +63,7 @@
                     <button id="next" class="cyber-button">▶▶</button>
                     <input type="file" id="file-input" accept="audio/*" style="display: none;">
                     <button id="load-tape" class="cyber-button secondary">LOAD TAPE</button>
+                    <button id="delete-tape" class="cyber-button danger">DELETE</button>
                 </div>
                 <div class="slider-group">
                     <label>LO-FI NOISE</label>

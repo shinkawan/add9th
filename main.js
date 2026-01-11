@@ -33,9 +33,9 @@ class CyberDeckPlayer {
 
         // Initial demo playlist (Hardcoded assets)
         this.playlist = [
-            { name: "初恋", artist: "LOCAL_TAPE", url: "hatsukoi.mp3" },
-            { name: "お菓子な恋人", artist: "LOCAL_TAPE", url: "okashina_koibito.mp3" },
-            { name: "火星人の唄", artist: "LOCAL_TAPE", url: "kaseijin_no_uta.mp3" }
+            { name: "初恋", artist: "DEMO_TAPE", url: "hatsukoi.mp3" },
+            { name: "お菓子な恋人", artist: "DEMO_TAPE", url: "okashina_koibito.mp3" },
+            { name: "火星人の唄", artist: "DEMO_TAPE", url: "kaseijin_no_uta.mp3" }
         ];
         this.currentTrackIndex = 0;
 
@@ -49,7 +49,9 @@ class CyberDeckPlayer {
 
         this.playPauseBtn.addEventListener('click', () => this.togglePlay());
         this.volumeSlider.addEventListener('input', (e) => {
-            this.audioElement.volume = e.target.value;
+            if (this.masterGain) {
+                this.masterGain.gain.setTargetAtTime(e.target.value, this.audioContext.currentTime, 0.1);
+            }
         });
 
         // Error handling for audio element
@@ -69,11 +71,32 @@ class CyberDeckPlayer {
             trackEl.textContent = msg + ": " + (this.playlist[this.currentTrackIndex]?.name || "UNKNOWN");
         });
 
+        // State Synchronization
+        this.audioElement.addEventListener('play', () => {
+            this.isPlaying = true;
+            this.playPauseBtn.textContent = '||';
+            document.querySelector('.cassette-body').classList.add('playing');
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "playing";
+        });
+
+        this.audioElement.addEventListener('pause', () => {
+            this.isPlaying = false;
+            this.playPauseBtn.textContent = '▶';
+            document.querySelector('.cassette-body').classList.remove('playing');
+            if ('mediaSession' in navigator) navigator.mediaSession.playbackState = "paused";
+        });
+
+        this.audioElement.addEventListener('ended', () => {
+            this.nextTrack(true);
+        });
+
         // File loading logic
         const loadTapeBtn = document.getElementById('load-tape');
+        const deleteTapeBtn = document.getElementById('delete-tape');
         const fileInput = document.getElementById('file-input');
 
         loadTapeBtn.addEventListener('click', () => fileInput.click());
+        deleteTapeBtn.addEventListener('click', () => this.deleteCurrentTrack());
         fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
 
         const nextBtn = document.getElementById('next');
@@ -91,6 +114,7 @@ class CyberDeckPlayer {
         window.addEventListener('resize', () => this.resizeCanvas());
         this.resizeCanvas();
 
+        this.setupMediaSession();
         this.loadTrack(0);
     }
 
@@ -127,7 +151,8 @@ class CyberDeckPlayer {
                         name: tape.name,
                         artist: "USER_IMPORT",
                         url: url,
-                        isPersisted: true
+                        isPersisted: true,
+                        id: tape.id
                     });
                 });
                 console.log(`LOADED ${tapes.length} PERSISTED TAPES`);
@@ -136,13 +161,64 @@ class CyberDeckPlayer {
         });
     }
 
+    async deleteTapeFromDB(id) {
+        if (!this.db) return;
+        return new Promise((resolve, reject) => {
+            const transaction = this.db.transaction(["tapes"], "readwrite");
+            const store = transaction.objectStore("tapes");
+            const request = store.delete(id);
+            request.onsuccess = () => resolve();
+            request.onerror = (e) => reject(e);
+        });
+    }
+
+    async deleteCurrentTrack() {
+        if (this.currentTrackIndex < 0 || this.currentTrackIndex >= this.playlist.length) return;
+
+        const track = this.playlist[this.currentTrackIndex];
+
+        // Only allow deleting persisted tracks (USER_IMPORT)
+        if (!track.isPersisted || !track.id) {
+            alert("CANNOT DELETE SYSTEM TAPE (PROTECTED)");
+            return;
+        }
+
+        if (!confirm(`DELETE TAPE: ${track.name}?`)) return;
+
+        try {
+            await this.deleteTapeFromDB(track.id);
+
+            // Remove from playlist
+            this.playlist.splice(this.currentTrackIndex, 1);
+
+            // Adjust index if necessary
+            if (this.currentTrackIndex >= this.playlist.length) {
+                this.currentTrackIndex = 0;
+            }
+
+            // Load new track or empty state
+            if (this.playlist.length > 0) {
+                this.loadTrack(this.currentTrackIndex);
+                if (this.isPlaying) this.audioElement.play();
+            } else {
+                this.audioElement.pause();
+                this.updateDisplay(null);
+            }
+
+            console.log("TAPE DELETED");
+        } catch (err) {
+            console.error("Delete Error:", err);
+            alert("ERROR DELETING TAPE");
+        }
+    }
+
     async saveTapeToDB(name, blob) {
         if (!this.db) return;
         return new Promise((resolve, reject) => {
             const transaction = this.db.transaction(["tapes"], "readwrite");
             const store = transaction.objectStore("tapes");
             const request = store.add({ name, blob, timestamp: Date.now() });
-            request.onsuccess = () => resolve();
+            request.onsuccess = (e) => resolve(e.target.result);
             request.onerror = () => reject();
         });
     }
@@ -160,6 +236,10 @@ class CyberDeckPlayer {
     }
 
     setupNodes() {
+        // Create Master Gain for global volume control
+        this.masterGain = this.audioContext.createGain();
+        this.masterGain.gain.value = this.volumeSlider.value; // Initialize with slider value
+
         this.source = this.audioContext.createMediaElementSource(this.audioElement);
         this.analyser = this.audioContext.createAnalyser();
         this.analyser.fftSize = 256;
@@ -184,13 +264,17 @@ class CyberDeckPlayer {
         this.noiseGain = this.audioContext.createGain();
         this.noiseGain.gain.value = 0;
 
+        // Connect noise graph (Noise -> Gain -> Analyser -> Master -> Dest)
         this.noiseSource.connect(this.noiseGain);
         this.noiseGain.connect(this.analyser);
 
-        // Connect nodes
+        // Connect music graph
         this.source.connect(this.lofiNode);
         this.lofiNode.connect(this.analyser);
-        this.analyser.connect(this.audioContext.destination);
+
+        // Connect final output to Master Gain then Destination
+        this.analyser.connect(this.masterGain);
+        this.masterGain.connect(this.audioContext.destination);
 
         this.noiseSource.start();
         this.setupLofiListener();
@@ -217,10 +301,10 @@ class CyberDeckPlayer {
 
         try {
             // Save to IndexedDB for persistence
-            await this.saveTapeToDB(name, file);
+            const id = await this.saveTapeToDB(name, file);
 
             const url = URL.createObjectURL(file);
-            const newTrack = { name: name, artist: "USER_IMPORT", url: url };
+            const newTrack = { name: name, artist: "USER_IMPORT", url: url, isPersisted: true, id: id };
 
             this.playlist.push(newTrack);
             this.loadTrack(this.playlist.length - 1);
@@ -234,18 +318,24 @@ class CyberDeckPlayer {
         }
     }
 
-    nextTrack() {
+    nextTrack(forcePlay = false) {
         if (this.playlist.length === 0) return;
+        const wasPlaying = forcePlay || !this.audioElement.paused;
         this.currentTrackIndex = (this.currentTrackIndex + 1) % this.playlist.length;
         this.loadTrack(this.currentTrackIndex);
-        if (this.isPlaying) this.audioElement.play();
+        if (wasPlaying) {
+            this.audioElement.play().catch(e => console.error("Auto-play failed:", e));
+        }
     }
 
     prevTrack() {
         if (this.playlist.length === 0) return;
+        const wasPlaying = !this.audioElement.paused;
         this.currentTrackIndex = (this.currentTrackIndex - 1 + this.playlist.length) % this.playlist.length;
         this.loadTrack(this.currentTrackIndex);
-        if (this.isPlaying) this.audioElement.play();
+        if (wasPlaying) {
+            this.audioElement.play().catch(e => console.error("Auto-play failed:", e));
+        }
     }
 
     handlePressStart(e, direction) {
@@ -328,6 +418,7 @@ class CyberDeckPlayer {
         console.log("Loading track:", track.name, "URL:", track.url.substring(0, 30) + "...");
         this.audioElement.src = track.url;
         this.updateDisplay(track);
+        this.updateMediaSessionMetadata(track);
     }
 
     updateDisplay(track = null) {
@@ -349,22 +440,57 @@ class CyberDeckPlayer {
             return;
         }
         this.initAudioContext();
-
-        if (this.isPlaying) {
-            this.audioElement.pause();
-            this.playPauseBtn.textContent = '▶';
-            document.querySelector('.cassette-body').classList.remove('playing');
-        } else {
+        if (this.audioContext && this.audioContext.state === 'suspended') {
             this.audioContext.resume();
-            this.audioElement.play();
-            this.playPauseBtn.textContent = '||';
-            document.querySelector('.cassette-body').classList.add('playing');
         }
-        this.isPlaying = !this.isPlaying;
+
+        if (this.audioElement.paused) {
+            this.audioElement.play().catch(e => console.error("Playback failed:", e));
+        } else {
+            this.audioElement.pause();
+        }
+    }
+
+    setupMediaSession() {
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.setActionHandler('play', () => {
+                this.audioElement.play();
+            });
+            navigator.mediaSession.setActionHandler('pause', () => {
+                this.audioElement.pause();
+            });
+            navigator.mediaSession.setActionHandler('previoustrack', () => this.prevTrack());
+            navigator.mediaSession.setActionHandler('nexttrack', () => this.nextTrack());
+            navigator.mediaSession.setActionHandler('seekbackward', () => {
+                this.audioElement.currentTime = Math.max(0, this.audioElement.currentTime - 10);
+            });
+            navigator.mediaSession.setActionHandler('seekforward', () => {
+                this.audioElement.currentTime = Math.min(this.audioElement.duration, this.audioElement.currentTime + 10);
+            });
+        }
+    }
+
+    updateMediaSessionMetadata(track) {
+        if ('mediaSession' in navigator) {
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: track.name,
+                artist: track.artist,
+                artwork: [
+                    { src: 'logo.png', sizes: '96x96', type: 'image/png' },
+                    { src: 'logo.png', sizes: '128x128', type: 'image/png' },
+                    { src: 'logo.png', sizes: '192x192', type: 'image/png' },
+                    { src: 'logo.png', sizes: '256x256', type: 'image/png' },
+                    { src: 'logo.png', sizes: '384x384', type: 'image/png' },
+                    { src: 'logo.png', sizes: '512x512', type: 'image/png' },
+                ]
+            });
+        }
     }
 
     draw() {
         requestAnimationFrame(() => this.draw());
+
+        if (!this.analyser) return;
 
         const bufferLength = this.analyser.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
@@ -401,5 +527,5 @@ class CyberDeckPlayer {
 // Initial boot sequence
 window.addEventListener('load', () => {
     console.log("CYBER-DECK OS LOADED...");
-    new CyberDeckPlayer();
+    window.player = new CyberDeckPlayer();
 });
