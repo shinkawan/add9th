@@ -26,6 +26,10 @@ class CyberDeckPlayer {
         this.isSeeking = false;
         this.pressThreshold = 300; // ms
 
+        // iOS background audio workaround components
+        this.iosSilentAudio = null;
+        this.iosStreamDest = null;
+
         // DB setup
         this.dbName = "CyberDeckDB";
         this.dbVersion = 1;
@@ -113,6 +117,13 @@ class CyberDeckPlayer {
         // Handle window resize for visualizer
         window.addEventListener('resize', () => this.resizeCanvas());
         this.resizeCanvas();
+
+        // AudioContext state monitoring for resume (iOS safety)
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden && this.audioContext && this.audioContext.state === 'interrupted') {
+                this.audioContext.resume();
+            }
+        });
 
         this.setupMediaSession();
         this.loadTrack(0);
@@ -278,6 +289,11 @@ class CyberDeckPlayer {
         // Connect final output to Master Gain then Destination
         this.analyser.connect(this.masterGain);
         this.masterGain.connect(this.audioContext.destination);
+
+        // iOS Background Audio Hack: Route through MediaStream to a sacrificial audio element
+        if (this.isIOS()) {
+            this.setupIOSBackgroundAudio();
+        }
 
         this.noiseSource.start();
         this.setupLofiListener();
@@ -534,6 +550,37 @@ class CyberDeckPlayer {
                     .catch(err => console.log('SW REGISTRATION FAILED', err));
             });
         }
+    }
+
+    // iOS Specific Background Audio Workaround
+    setupIOSBackgroundAudio() {
+        try {
+            this.iosStreamDest = this.audioContext.createMediaStreamDestination();
+            this.masterGain.connect(this.iosStreamDest);
+
+            // Create hidden audio element to "consume" the stream and keep AC alive
+            this.iosSilentAudio = document.createElement('audio');
+            this.iosSilentAudio.style.display = 'none';
+            document.body.appendChild(this.iosSilentAudio);
+
+            this.iosSilentAudio.srcObject = this.iosStreamDest.stream;
+
+            // Sync with main playback
+            this.audioElement.addEventListener('play', () => this.iosSilentAudio.play());
+            this.audioElement.addEventListener('pause', () => this.iosSilentAudio.pause());
+
+            console.log("iOS BACKGROUND AUDIO PAYLOAD ARMED");
+        } catch (e) {
+            console.error("iOS Audio Hack Failed:", e);
+        }
+    }
+
+    isIOS() {
+        return [
+            'iPad Simulator', 'iPhone Simulator', 'iPod Simulator',
+            'iPad', 'iPhone', 'iPod'
+        ].includes(navigator.platform)
+            || (navigator.userAgent.includes("Mac") && "ontouchend" in document);
     }
 }
 
