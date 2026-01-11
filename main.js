@@ -60,10 +60,10 @@ class CyberDeckPlayer {
             let msg = "LOAD ERROR";
             if (error) {
                 switch (error.code) {
-                    case 1: msg = "ABORTED"; break;
-                    case 2: msg = "NETWORK ERROR"; break;
-                    case 3: msg = "DECODE ERROR"; break;
-                    case 4: msg = "SRC NOT SUPPORTED"; break;
+                    case 1: msg = "中断"; break;
+                    case 2: msg = "通信エラー"; break;
+                    case 3: msg = "変換エラー"; break;
+                    case 4: msg = "未対応形式"; break;
                 }
             }
             console.error("Audio Error:", msg, error);
@@ -116,6 +116,9 @@ class CyberDeckPlayer {
 
         this.setupMediaSession();
         this.loadTrack(0);
+
+        // PWA Setup
+        this.registerServiceWorker();
     }
 
     initDB() {
@@ -179,11 +182,11 @@ class CyberDeckPlayer {
 
         // Only allow deleting persisted tracks (USER_IMPORT)
         if (!track.isPersisted || !track.id) {
-            alert("CANNOT DELETE SYSTEM TAPE (PROTECTED)");
+            alert("システムテープは削除できません（保護）");
             return;
         }
 
-        if (!confirm(`DELETE TAPE: ${track.name}?`)) return;
+        if (!confirm(`テープを削除しますか？: ${track.name}`)) return;
 
         try {
             await this.deleteTapeFromDB(track.id);
@@ -314,7 +317,7 @@ class CyberDeckPlayer {
             console.log("TAPE PERSISTED TO SYSTEM STORAGE");
         } catch (err) {
             console.error("Save Error:", err);
-            alert("STORAGE FULL OR ERROR: COULD NOT PERSIST TAPE");
+            alert("容量不足またはエラー：保存できませんでした");
         }
     }
 
@@ -371,12 +374,12 @@ class CyberDeckPlayer {
 
         if (direction === 1) {
             // Fast Forward
-            trackEl.textContent = ">> FAST_FORWARD >>";
+            trackEl.textContent = ">> 早送り中 >>";
             this.audioElement.playbackRate = 3.0;
             if (this.audioElement.paused) this.audioElement.play();
         } else {
             // Rewind
-            trackEl.textContent = "<< REWINDING <<";
+            trackEl.textContent = "<< 巻き戻し中 <<";
             this.audioElement.playbackRate = 1.0;
             this.audioElement.muted = true; // Mute during rewind to avoid glitchy sound
 
@@ -429,14 +432,14 @@ class CyberDeckPlayer {
             trackEl.textContent = track.name;
             artistEl.textContent = track.artist;
         } else {
-            trackEl.textContent = "NO TAPE INSERTED";
-            artistEl.textContent = "WAITING FOR INPUT...";
+            trackEl.textContent = "テープ未挿入";
+            artistEl.textContent = "入力を待機中...";
         }
     }
 
     togglePlay() {
         if (this.playlist.length === 0) {
-            alert("INSERT TAPE FIRST");
+            alert("テープを挿入してください");
             return;
         }
         this.initAudioContext();
@@ -520,6 +523,16 @@ class CyberDeckPlayer {
             this.canvasCtx.shadowColor = '#00f3ff';
 
             x += barWidth + 1;
+        }
+    }
+
+    registerServiceWorker() {
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(reg => console.log('SW REGISTERED', reg.scope))
+                    .catch(err => console.log('SW REGISTRATION FAILED', err));
+            });
         }
     }
 }
