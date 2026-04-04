@@ -1,12 +1,15 @@
 // Minimal Service Worker to satisfy PWA requirements
-const CACHE_NAME = 'cyber-deck-v1';
+const CACHE_NAME = 'cyber-deck-v2';
 const ASSETS = [
     '/',
     '/index.html',
     '/style.css',
     '/main.js',
     '/logo.png',
-    '/manifest.json'
+    '/manifest.json',
+    '/hatsukoi.m4a',
+    '/okashina_koibito.m4a',
+    '/kaseijin_no_uta.m4a'
 ];
 
 self.addEventListener('install', (event) => {
