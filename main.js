@@ -35,9 +35,9 @@ class CyberDeckPlayer {
 
         // Initial demo playlist (Hardcoded assets)
         this.playlist = [
-            { name: "初恋", artist: "DEMO_TAPE", url: "hatsukoi.wav" },
-            { name: "お菓子な恋人", artist: "DEMO_TAPE", url: "okashina_koibito.wav" },
-            { name: "火星人の唄", artist: "DEMO_TAPE", url: "kaseijin_no_uta.wav" }
+            { name: "初恋", artist: "DEMO_TAPE", url: "hatsukoi.m4a" },
+            { name: "お菓子な恋人", artist: "DEMO_TAPE", url: "okashina_koibito.m4a" },
+            { name: "火星人の唄", artist: "DEMO_TAPE", url: "kaseijin_no_uta.m4a" }
         ];
         this.currentTrackIndex = 0;
 
