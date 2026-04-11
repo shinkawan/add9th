@@ -1,5 +1,5 @@
 // Minimal Service Worker to satisfy PWA requirements
-const CACHE_NAME = 'cyber-deck-v2';
+const CACHE_NAME = 'cyber-deck-v3';
 const ASSETS = [
     '/',
     '/index.html',
