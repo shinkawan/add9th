@@ -1,5 +1,5 @@
 /**
- * Cyber-Deck OS v1.0.86
+ * Cyber-Deck OS v1.0.87
  * Core Audio Engine
  */
 
