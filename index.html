@@ -4,14 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cyber-Deck 1984 | Music Player</title>
+    <title>Cyber-Deck 1984 | Retro Audio System</title>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/png" href="logo.png">
     <link rel="apple-touch-icon" href="icon-512.png">
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#0a0a0f">
     <link
-        href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto+Mono:wght@400;700&display=swap"
+        href="https://fonts.googleapis.com/css2?family=DotGothic16&family=Orbitron:wght@400;700;900&family=Roboto+Mono:wght@400;700&display=swap"
         rel="stylesheet">
 </head>
 
@@ -20,20 +20,43 @@
     <div class="scanlines"></div>
 
     <main class="cyber-deck">
-        <div class="deck-header">
-            <a href="https://add9th.from.tv/" target="_blank" rel="noopener noreferrer" class="logo-link">
+        <!-- Deck Header -->
+        <header class="deck-header">
+            <a href="https://add9th.from.tv/" target="_blank" rel="noopener noreferrer" class="logo-link" title="アドナイン公式ホームページへ">
                 <img src="logo.png" alt="Logo" class="deck-logo">
                 <span class="official-site-text">アドナイン公式ホームページ</span>
             </a>
-            <div class="model-number">SERIES-1984 [MOD V3]</div>
-        </div>
+            <div class="header-right">
+                <span class="system-tag">DECK-OS v1.0.94</span>
+                <span class="model-number">SERIES-1984 [MOD V4]</span>
+            </div>
+        </header>
+
         <!-- Dashboard / Monitor -->
         <section class="monitor-bay">
             <div class="monitor-screen">
+                <div class="monitor-top-bar">
+                    <span class="tape-status-tag" id="tape-status-tag">TAPE: LOADED</span>
+                    <button id="vis-mode-btn" class="mode-tag-btn" title="ビジュアライザー表示切替 (クリックで切替)">VIS: [BARS]</button>
+                </div>
+                
                 <canvas id="visualizer"></canvas>
+                
                 <div class="track-info">
                     <h1 id="track-name">待受中...</h1>
-                    <p id="artist-name">CYBER-DECK_OS v1.0.89</p>
+                    <p id="artist-name">CYBER-DECK_OS v1.0.94</p>
+                </div>
+
+                <div class="monitor-bottom-bar">
+                    <div class="time-display">
+                        <span id="current-time">00:00</span>
+                        <span class="time-sep">/</span>
+                        <span id="total-time">00:00</span>
+                    </div>
+                    <div class="seek-container">
+                        <input type="range" id="seek-bar" min="0" max="100" value="0" step="0.1" title="シークバー (クリックまたはドラッグで移動)">
+                        <div class="seek-progress-bar" id="seek-progress"></div>
+                    </div>
                 </div>
             </div>
         </section>
@@ -41,11 +64,27 @@
         <!-- Tape Deck Section -->
         <section class="tape-bay">
             <div class="cassette">
-                <div class="cassette-body">
-                    <div class="reel reel-left"></div>
-                    <div class="reel reel-right"></div>
+                <div class="cassette-body" id="cassette-body">
+                    <div class="cassette-screw screw-tl"></div>
+                    <div class="cassette-screw screw-tr"></div>
+                    <div class="cassette-screw screw-bl"></div>
+                    <div class="cassette-screw screw-br"></div>
+                    <div class="cassette-notch notch-left"></div>
+                    <div class="cassette-notch notch-right"></div>
+
+                    <!-- Spools with dynamic tape thickness -->
+                    <div class="spool-housing spool-left">
+                        <div class="tape-pack" id="tape-pack-left"></div>
+                        <div class="reel reel-left"></div>
+                    </div>
+                    <div class="spool-housing spool-right">
+                        <div class="tape-pack" id="tape-pack-right"></div>
+                        <div class="reel reel-right"></div>
+                    </div>
+
                     <div class="tape-window">
-                        <div class="tape-label">TDK-D90</div>
+                        <div class="tape-label" id="tape-label">CYBER-DECK DEMO</div>
+                        <div class="tape-sub-label" id="tape-sub-label">TYPE-I NORMAL / 120µs</div>
                     </div>
                 </div>
             </div>
@@ -54,32 +93,118 @@
         <!-- Controls -->
         <section class="control-bay">
             <div class="control-panel">
-                <div class="slider-group">
-                    <label>VOLUME</label>
-                    <input type="range" id="volume" min="0" max="1" step="0.01" value="0.7">
+                <!-- Slider Section Left -->
+                <div class="slider-column">
+                    <div class="slider-group">
+                        <div class="slider-label-row">
+                            <label for="volume">VOLUME</label>
+                            <span class="slider-val" id="vol-val">70%</span>
+                        </div>
+                        <input type="range" id="volume" min="0" max="1" step="0.01" value="0.7">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label-row">
+                            <label for="bass">BASS BOOST</label>
+                            <span class="slider-val" id="bass-val">0dB</span>
+                        </div>
+                        <input type="range" id="bass" min="0" max="12" step="0.5" value="0">
+                    </div>
                 </div>
+
+                <!-- Main Action Buttons Center -->
                 <div class="button-group">
-                    <button id="prev" class="cyber-button">◀◀</button>
-                    <button id="play-pause" class="cyber-button play">▶</button>
-                    <button id="next" class="cyber-button">▶▶</button>
-                    <input type="file" id="file-input" accept="audio/*" style="display: none;">
-                    <button id="load-tape" class="cyber-button secondary">LOAD TAPE</button>
-                    <button id="delete-tape" class="cyber-button danger">DELETE</button>
+                    <div class="deck-btn-row transport-row">
+                        <button id="prev" class="cyber-button nav-btn" title="前の曲 / 長押しで巻き戻し">◀◀</button>
+                        <button id="play-pause" class="cyber-button play" title="再生 / 一時停止">▶</button>
+                        <button id="next" class="cyber-button nav-btn" title="次の曲 / 長押しで早送り">▶▶</button>
+                    </div>
+                    <div class="deck-btn-row function-row">
+                        <input type="file" id="file-input" accept="audio/*" style="display: none;">
+                        <button id="load-tape" class="cyber-button secondary" title="ローカル音声ファイルを読み込んで保存">LOAD TAPE</button>
+                        <button id="tape-rack-btn" class="cyber-button accent" title="テープラック（プレイリスト一覧）を開く">TAPE RACK ≡</button>
+                        <button id="delete-tape" class="cyber-button danger" title="現在選択中のユーザーテープを削除">DELETE</button>
+                    </div>
                 </div>
-                <div class="slider-group">
-                    <label>LO-FI NOISE</label>
-                    <input type="range" id="lofi" min="0" max="1" step="0.01" value="0">
+
+                <!-- Slider Section Right -->
+                <div class="slider-column">
+                    <div class="slider-group">
+                        <div class="slider-label-row">
+                            <label for="lofi">LO-FI NOISE</label>
+                            <span class="slider-val" id="lofi-val">0%</span>
+                        </div>
+                        <input type="range" id="lofi" min="0" max="1" step="0.01" value="0">
+                    </div>
+                    <div class="slider-group">
+                        <div class="slider-label-row">
+                            <label for="warble">TAPE WARBLE</label>
+                            <span class="slider-val" id="warble-val">0%</span>
+                        </div>
+                        <input type="range" id="warble" min="0" max="1" step="0.01" value="0">
+                    </div>
                 </div>
             </div>
 
-            <div class="status-bar">
-                <span class="status-led" id="power-led"></span>
-                <span class="status-text">システム正常 // リンク完了</span>
-            </div>
+            <!-- LED & Status Bar -->
+            <footer class="status-bar">
+                <div class="led-indicators">
+                    <span class="led-item"><span class="status-led led-green" id="power-led"></span> PWR</span>
+                    <span class="led-item"><span class="status-led led-cyan" id="tape-led"></span> TAPE</span>
+                    <span class="led-item"><span class="status-led led-magenta" id="stereo-led"></span> STEREO</span>
+                    <span class="led-item"><span class="status-led led-red" id="peak-led"></span> PEAK</span>
+                </div>
+                <span class="status-text" id="status-text">システム正常 // リンク完了</span>
+                <span class="shortcuts-hint" id="shortcuts-hint" title="キーボードショートカット: [Space] 再生/停止, [←/→] シーク, [↑/↓] 音量, [M] 消音">[⌨ KEYS]</span>
+            </footer>
         </section>
     </main>
 
-    <audio id="audio-player"></audio>
+    <!-- TAPE RACK Modal / Drawer -->
+    <div id="tape-rack-modal" class="tape-rack-modal hidden">
+        <div class="rack-backdrop" id="rack-backdrop"></div>
+        <div class="rack-panel">
+            <div class="rack-header">
+                <div class="rack-title">
+                    <span class="rack-icon">📼</span>
+                    <h2>// TAPE RACK DIRECTORY</h2>
+                </div>
+                <button id="rack-close-btn" class="rack-close-btn" title="閉じる">✕</button>
+            </div>
+            <div class="rack-list" id="rack-list">
+                <!-- Tapes populated by JavaScript -->
+            </div>
+            <div class="rack-footer">
+                <button id="rack-import-btn" class="cyber-button secondary">+ INSERT NEW TAPE</button>
+                <span class="rack-count" id="rack-count">TOTAL TAPES: 0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shortcuts Info Modal -->
+    <div id="shortcuts-modal" class="shortcuts-modal hidden">
+        <div class="modal-backdrop" id="shortcuts-backdrop"></div>
+        <div class="shortcuts-panel">
+            <div class="rack-header">
+                <div class="rack-title">
+                    <span class="rack-icon">⌨</span>
+                    <h2>// KEYBOARD CONTROLS</h2>
+                </div>
+                <button id="shortcuts-close-btn" class="rack-close-btn" title="閉じる">✕</button>
+            </div>
+            <div class="shortcuts-list">
+                <div class="shortcut-item"><kbd>Space</kbd> <span>再生 / 一時停止</span></div>
+                <div class="shortcut-item"><kbd>←</kbd> / <kbd>→</kbd> <span>5秒 巻き戻し / 早送り</span></div>
+                <div class="shortcut-item"><kbd>Shift</kbd> + <kbd>←</kbd> / <kbd>→</kbd> <span>前 / 次のトラック</span></div>
+                <div class="shortcut-item"><kbd>↑</kbd> / <kbd>↓</kbd> <span>音量アップ / ダウン</span></div>
+                <div class="shortcut-item"><kbd>M</kbd> <span>ミュート (消音) 切り替え</span></div>
+                <div class="shortcut-item"><kbd>V</kbd> <span>ビジュアライザー切替</span></div>
+                <div class="shortcut-item"><kbd>T</kbd> <span>TAPE RACK 開閉</span></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hidden audio element -->
+    <audio id="audio-player" preload="metadata"></audio>
     <script src="main.js"></script>
 </body>
 
