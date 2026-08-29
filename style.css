@@ -163,11 +163,40 @@ body {
     letter-spacing: 2px;
 }
 
+.logo-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    text-decoration: none;
+    transition: transform 0.2s ease;
+}
+
+.logo-link:hover {
+    transform: translateY(-1px);
+}
+
 .deck-logo {
     max-width: 100px;
     max-height: 30px;
     opacity: 0.9;
     filter: drop-shadow(0 0 5px var(--neon-cyan));
+}
+
+.official-site-text {
+    font-family: 'Hiragino Kaku Gothic ProN', 'MS Gothic', 'Osaka', sans-serif;
+    font-size: 0.75rem;
+    color: var(--neon-cyan);
+    opacity: 0.85;
+    letter-spacing: 1px;
+    font-weight: 700;
+    text-shadow: 0 0 5px var(--neon-cyan);
+    transition: all 0.2s ease;
+}
+
+.logo-link:hover .official-site-text {
+    opacity: 1;
+    color: #ffffff;
+    text-shadow: 0 0 10px var(--neon-cyan), 0 0 15px var(--neon-magenta);
 }
 
 .track-info h1 {
